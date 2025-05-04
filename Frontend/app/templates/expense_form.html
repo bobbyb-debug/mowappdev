@@ -1,0 +1,138 @@
+<div class="alert alert-info">
+    <strong>Filters:</strong>
+    {% if request.args.get('job_id') %}
+        Job: {{ form.job_id.choices|selectattr("0", "equalto", request.args.get('job_id'))|map(attribute="1")|first }}
+    {% endif %}
+    {% if request.args.get('category') %}
+        Category: {{ form.category.choices|selectattr("0", "equalto", request.args.get('category'))|map(attribute="1")|first }}
+    {% endif %}
+</div>
+
+<form method="GET" class="row g-2 mb-3">
+    <div class="col-md-6">
+        <label class="form-label">Filter by Job</label>
+        <select name="job_id" class="form-select">
+            <option value="">All Jobs</option>
+            {% for job in form.job_id.choices %}
+            <option value="{{ job[0] }}" {% if request.args.get('job_id') == job[0]|string %}selected{% endif %}>{{ job[1] }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-6">
+        <label class="form-label">Filter by Category</label>
+        <select name="category" class="form-select">
+            <option value="">All Categories</option>
+            {% for cat in form.category.choices %}
+            <option value="{{ cat[0] }}" {% if request.args.get('category') == cat[0] %}selected{% endif %}>{{ cat[1] }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-12 text-end">
+        <button type="submit" class="btn btn-outline-primary btn-sm">Apply Filters</button>
+        <a href="{{ url_for('expenses.record_expense') }}" class="btn btn-outline-secondary btn-sm">Reset</a>
+    </div>
+</form>
+
+<!-- Total Results -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0">Total Results: {{ total_results }}</h5>
+    <nav aria-label="Expense pagination">
+        <ul class="pagination mb-0">
+            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('expenses.record_expense', page=pagination.prev_num, job_id=request.args.get('job_id'), category=request.args.get('category')) }}">Previous</a>
+            </li>
+            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('expenses.record_expense', page=pagination.next_num, job_id=request.args.get('job_id'), category=request.args.get('category')) }}">Next</a>
+            </li>
+        </ul>
+    </nav>
+</div>
+
+<form method="get" class="row g-2 mb-3 align-items-end">
+    <div class="col-md-3">
+      <label class="form-label">Filter by Job</label>
+      <select name="job_id" class="form-select">
+        <option value="">All Jobs</option>
+        {% for job in form.job_id.choices %}
+        <option value="{{ job[0] }}" {% if filters.get('job_id') == job[0]|string %}selected{% endif %}>
+          {{ job[1] }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+  
+    <div class="col-md-3">
+      <label class="form-label">Filter by Category</label>
+      <select name="category" class="form-select">
+        <option value="">All Categories</option>
+        {% for cat in form.category.choices %}
+        <option value="{{ cat[0] }}" {% if filters.get('category') == cat[0] %}selected{% endif %}>
+          {{ cat[1] }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+  
+    <div class="col-md-3">
+      <label class="form-label">Sort by</label>
+      <select name="sort_by" class="form-select">
+        <option value="date" {% if filters.get('sort_by') == 'date' %}selected{% endif %}>Date</option>
+        <option value="amount" {% if filters.get('sort_by') == 'amount' %}selected{% endif %}>Amount</option>
+        <option value="category" {% if filters.get('sort_by') == 'category' %}selected{% endif %}>Category</option>
+      </select>
+    </div>
+  
+    <div class="col-md-3 d-flex gap-2">
+      <button type="submit" class="btn btn-primary w-100">Apply</button>
+      <a href="{{ url_for('expenses.record_expense') }}" class="btn btn-secondary">Clear</a>
+    </div>
+  </form>
+  
+  <div class="mb-3 text-end">
+    <a href="{{ url_for('expenses.export_expenses') }}" class="btn btn-outline-success btn-sm me-2">
+      <i class="fas fa-file-csv"></i> Export CSV
+    </a>
+    <a href="{{ url_for('expenses.export_pdf') }}" class="btn btn-outline-danger btn-sm">
+      <i class="fas fa-file-pdf"></i> Export PDF
+    </a>
+  </div>
+  
+<!-- Expense Table -->
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Job</th>
+                <th>Category</th>
+                <th>Amount</th>
+                <th>Date</th>
+                <th>Receipt</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for expense in expenses %}
+            <tr>
+                <td>{{ expense.job.client.name }} - {{ expense.job.service_type }}</td>
+                <td>{{ expense.category }}</td>
+                <td>${{ "%.2f" % expense.amount }}</td>
+                <td>{{ expense.date.strftime('%Y-%m-%d') }}</td>
+                <td>
+                    {% if expense.receipt_filename %}
+                    <a href="{{ url_for('expenses.view_receipt', filename=expense.receipt_filename) }}" target="_blank">View</a>
+                    {% else %}-{% endif %}
+                </td>
+                <td>
+                    <form method="POST" action="{{ url_for('expenses.delete_expense', expense_id=expense.id) }}" onsubmit="return confirm('Delete this expense?');">
+                        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" class="text-center">No expenses found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
